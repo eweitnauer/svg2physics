@@ -198,3 +198,5 @@ ListenerPattern.prototype.emit = function() {
 		this.listeners[i].apply(this.listeners[i], arguments);
 	}
 }
+
+s2p.PhysicsScene = PhysicsScene;

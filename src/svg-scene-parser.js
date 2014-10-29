@@ -258,5 +258,7 @@ SVGScene.prototype.renderInSvg = function(doc, parent, x, y, scale, show_numbers
         .attr('text-anchor', 'middle')
         .attr('dominant-baseline', 'central').text(i);
     }
-  };
+  }
 }
+
+s2p.SVGSceneParser = SVGSceneParser;

@@ -1,0 +1,20 @@
+{
+  "name": "svg2physics.js",
+  "description": "Turns SVG images into a dynamics physics scenes.",
+  "version": "1.0.0",
+  "keywords": [
+    "physics",
+    "box2d",
+    "svg"
+  ],
+  "author": {
+    "name": "Erik Weitnauer"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eweitnauer/svg2physics"
+  },
+  "devDependencies": {
+    "uglify-js": "2.x.x"
+  }
+}

@@ -203,3 +203,5 @@ obj_extended = function(src1, src2) {
   }
   return target;
 }
+
+s2p.Box2DAdapter = Box2DAdapter;

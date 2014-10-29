@@ -10,7 +10,7 @@ function init() {
 }
 
 function loadSVG(path) {
-  var scene = SVGSceneParser.parseFile(path);
+  var scene = s2p.SVGSceneParser.parseFile(path);
 
   // display svg scene
   svg.selectAll("*").remove();
@@ -18,15 +18,15 @@ function loadSVG(path) {
 
   // create & populate physics scene
   world = new Box2D.Dynamics.b2World(new Box2D.Common.Math.b2Vec2(0, 10), true);
-  var adapter = new Box2DAdapter();
+  var adapter = new s2p.Box2DAdapter();
   scene.pixels_per_unit = 50;
   scene.friction = 0.3;
   scene.resitution = 0.1;
   adapter.loadScene(world, scene, true, false);
 
   // display physics scene
-  simulator = new Simulator( new PhysicsScene(world), canvas.node()
-                           , scene.pixels_per_unit*scale, false);
+  simulator = new s2p.Simulator( new s2p.PhysicsScene(world), canvas.node()
+                               , scene.pixels_per_unit*scale, false);
   simulator.play();
 }
 

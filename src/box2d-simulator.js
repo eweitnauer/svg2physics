@@ -206,3 +206,5 @@ Simulator.prototype.draw = function() {
     this.ctx.fillText(text, 5, 10);
   }
 }
+
+s2p.Simulator = Simulator;
