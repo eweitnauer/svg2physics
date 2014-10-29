@@ -9,6 +9,7 @@ all: svg2physics.min.js
 	src/box2d-simulator.js \
 	src/physics-scene.js \
 	src/svg-scene-parser.js \
+	src/physics-oracle.js \
 	src/end.js
 
 svg2physics.min.js: svg2physics.js Makefile
