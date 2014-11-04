@@ -1,6 +1,6 @@
 JS_COMPILER = ./node_modules/.bin/uglifyjs
 
-all: svg2physics.min.js
+all: svg2physics.min.js svg2physics.zip
 
 .INTERMEDIATE svg2physics.js: \
 	src/start.js \
@@ -21,6 +21,11 @@ svg2physics.js: Makefile
 	@rm -f $@
 	cat $(filter %.js,$^) > $@
 	@chmod a-w $@
+
+svg2physics.zip: svg2physics.min.js
+	zip svg2physics.zip \
+	  svg2physics.min.js svg2physics.js LICENCE \
+	  libs/box2dweb/Box2D.min.js libs/box2dweb/Box2D.js
 
 clean:
 	rm -f svg2physics*.js
