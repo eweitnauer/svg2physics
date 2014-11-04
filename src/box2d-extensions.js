@@ -116,6 +116,14 @@ b2BodyState.prototype.Apply = function(body) {
   }
   body.m_flags = this.m_flags;
   body.SynchronizeFixtures();
+  this.moveAwayAndBackAgain(body); // needed to keep objects passing through
+                                   // each other when toggling type between
+                                   // static and dynamic
+}
+
+b2BodyState.prototype.moveAwayAndBackAgain = function(body) {
+  body.SetPosition({x: Infinity, y: Infinity});
+  body.SetPosition(this.m_xf.position);
 }
 
 function b2WorldState(world) {
@@ -145,17 +153,13 @@ b2Body.prototype.PopState = function() {
 b2World.prototype.PushState = function() {
   if (!this.worldstates) this.worldstates = [];
   this.worldstates.push(new b2WorldState(this));
-  for (var b = this.m_bodyList; b; b=b.m_next) {
-    if (b.m_type == b2Body.b2_dynamicBody) b.PushState();
-  }
+  for (var b = this.m_bodyList; b; b=b.m_next) b.PushState();
 }
 
 /// Pops the states of all dynamic bodies.
 b2World.prototype.PopState = function() {
   this.worldstates.pop().Apply(this);
-  for (var b = this.m_bodyList; b; b=b.m_next) {
-    if (b.m_type == b2Body.b2_dynamicBody) b.PopState();
-  }
+  for (var b = this.m_bodyList; b; b=b.m_next) b.PopState();
   this.m_contactManager.FindNewContacts();
 }
 
@@ -164,7 +168,7 @@ b2World.prototype.GetState = function() {
   var state = [];
   state.push({el: this, state: new b2WorldState(this)});
   for (var b = this.m_bodyList; b; b=b.m_next) {
-    if (b.m_type == b2Body.b2_dynamicBody) state.push({el: b, state: new b2BodyState(b)});
+    state.push({el: b, state: new b2BodyState(b)});
   }
   return state;
 }
