@@ -1,5 +1,6 @@
 s2p = (function(){
-  var s2p = { version: "1.0.0" }; // semver// Copyright Erik Weitnauer 2014.
+  var s2p = { version: "1.1.1" }; // semver
+// Copyright Erik Weitnauer 2014.
 var
   b2BodyDef = Box2D.Dynamics.b2BodyDef
  ,b2Body = Box2D.Dynamics.b2Body
@@ -323,6 +324,14 @@ b2BodyState.prototype.Apply = function(body) {
   }
   body.m_flags = this.m_flags;
   body.SynchronizeFixtures();
+  this.moveAwayAndBackAgain(body); // needed to keep objects passing through
+                                   // each other when toggling type between
+                                   // static and dynamic
+}
+
+b2BodyState.prototype.moveAwayAndBackAgain = function(body) {
+  body.SetPosition({x: Infinity, y: Infinity});
+  body.SetPosition(this.m_xf.position);
 }
 
 function b2WorldState(world) {
@@ -352,17 +361,13 @@ b2Body.prototype.PopState = function() {
 b2World.prototype.PushState = function() {
   if (!this.worldstates) this.worldstates = [];
   this.worldstates.push(new b2WorldState(this));
-  for (var b = this.m_bodyList; b; b=b.m_next) {
-    if (b.m_type == b2Body.b2_dynamicBody) b.PushState();
-  }
+  for (var b = this.m_bodyList; b; b=b.m_next) b.PushState();
 }
 
 /// Pops the states of all dynamic bodies.
 b2World.prototype.PopState = function() {
   this.worldstates.pop().Apply(this);
-  for (var b = this.m_bodyList; b; b=b.m_next) {
-    if (b.m_type == b2Body.b2_dynamicBody) b.PopState();
-  }
+  for (var b = this.m_bodyList; b; b=b.m_next) b.PopState();
   this.m_contactManager.FindNewContacts();
 }
 
@@ -371,7 +376,7 @@ b2World.prototype.GetState = function() {
   var state = [];
   state.push({el: this, state: new b2WorldState(this)});
   for (var b = this.m_bodyList; b; b=b.m_next) {
-    if (b.m_type == b2Body.b2_dynamicBody) state.push({el: b, state: new b2BodyState(b)});
+    state.push({el: b, state: new b2BodyState(b)});
   }
   return state;
 }
@@ -379,7 +384,8 @@ b2World.prototype.GetState = function() {
 /// Pass the result of a former GetState call to set the world to that situation.
 b2World.prototype.SetState = function(state) {
   state.forEach(function (e) { e.state.Apply(e.el) });
-}// Copyright Erik Weitnauer 2014.
+}
+// Copyright Erik Weitnauer 2014.
 
 var b2DebugDraw = Box2D.Dynamics.b2DebugDraw
   , b2MouseJointDef = Box2D.Dynamics.Joints.b2MouseJointDef;
@@ -882,13 +888,23 @@ var SVGSceneParser = (function() {
     var paths = root.getElementsByTagName('path');
     for (var i=0; i<paths.length; i++) {
       var path_node = paths[i];
-      // circles are saved as paths in inkscape, so the path_node is either a circle or
-      // a real path
+      // circles are saved as paths in old Inkscape versions, so the path_node
+      // is either a circle or a real path
       var shape = Circle.fromSVGPath(path_node, false) ||
                 Polygon.fromSVGPath(path_node, 1, false);
       if (shape instanceof Polygon) {
         shape.merge_vertices({min_dist: 1, min_vertex_count: 2});
       }
+      shape.svg_transform = path_node.getCTM();
+      shape.style = readStyle(path_node);
+      scale_stroke_width(shape, extract_scaling(shape.svg_transform));
+      shapes.push(shape);
+    }
+
+    var circles = root.getElementsByTagName('circle');
+    for (var i=0; i<circles.length; i++) {
+      var path_node = circles[i];
+      var shape = Circle.fromSVGCircle(path_node);
       shape.svg_transform = path_node.getCTM();
       shape.style = readStyle(path_node);
       scale_stroke_width(shape, extract_scaling(shape.svg_transform));
@@ -903,8 +919,8 @@ var SVGSceneParser = (function() {
 
     apply_transformations([frame], 0, 0, 1, root);
     var s  = 100/Math.abs(frame.pts[0].x-frame.pts[1].x)
-       ,dx = -Math.min(frame.pts[0].x, frame.pts[1].x)
-       ,dy = -Math.min(frame.pts[0].y, frame.pts[2].y)
+       ,dx = -Math.min(frame.pts[0].x, frame.pts[1].x)*s
+       ,dy = -Math.min(frame.pts[0].y, frame.pts[2].y)*s
     apply_transformations(shapes, dx, dy, s, root);
     apply_transformations([frame], dx, dy, s, root);
 
@@ -924,6 +940,7 @@ var SVGSceneParser = (function() {
       if (shape instanceof Circle) {
         var c = shape.centroid(); transform(c);
         shape.x = c.x; shape.y = c.y;
+        shape.r *= s;
         if (shape.svg_transform) shape.r *= Math.abs(shape.svg_transform.a);
       }
       else if (shape instanceof Polygon) shape.pts.forEach(transform);
@@ -989,20 +1006,12 @@ SVGScene.prototype.adjustStrokeWidth = function(width) {
     var bb = shape.bounding_box();
     var scale_x = (bb.width + stroke_width) / (bb.width + width);
     var scale_y = (bb.height + stroke_width) / (bb.height + width);
-    if (shape instanceof Polygon) {
-      if (shape.movable) {
-        //console.log('scale', scale_x, scale_y);
-        shape.pts.forEach(function(p) { p.x *= scale_x; p.y *= scale_y });
-        shape.style['stroke-width'] = width;
-      } else if (shape.id == "_") {
-        // if its the ground, move it up a bit
-        shape.pts.forEach(function(p) { p.y += (width-stroke_width)/2 });
-        shape.style['stroke-width'] = width;
-      }
+    if (shape instanceof Polygon && shape.id !== '|') {
+      shape.pts.forEach(function(p) { p.x *= scale_x; p.y *= scale_y });
     } else if (shape instanceof Circle) {
-      shape.style['stroke-width'] = width;
       shape.r = shape.r * scale_x;
     }
+    shape.style['stroke-width'] = width;
   }
 }
 
@@ -1033,12 +1042,6 @@ SVGScene.prototype.renderInSvg = function(doc, parent, x, y, scale, show_numbers
   g.setAttribute('transform', 'translate('+(x)+','+(y)+') scale('+scale+')');
   parent.appendChild(g);
   var rect = doc.createElementNS('http://www.w3.org/2000/svg','rect');
-  // rect.setAttribute('x',0);
-  // rect.setAttribute('y',0);
-  // rect.setAttribute('width', this.height);
-  // rect.setAttribute('height', this.width);
-  // rect.setAttribute('style','fill:none; stroke:black; stroke-width:1px');
-  // g.appendChild(rect);
   for (var i = 0; i < this.shapes.length; i++) {
     var shape = this.shapes[i];
     var svg_obj = shape.renderInSvg(document, g);
@@ -1052,7 +1055,8 @@ SVGScene.prototype.renderInSvg = function(doc, parent, x, y, scale, show_numbers
   }
 }
 
-s2p.SVGSceneParser = SVGSceneParser;/// Written by Erik Weitnauer, 2013.
+s2p.SVGSceneParser = SVGSceneParser;
+/// Written by Erik Weitnauer, 2013.
 /**
 PhyscisOracle:
 This class provides all functionality of the "physics black box" to the PBP Interpreter. It has the following methods:
