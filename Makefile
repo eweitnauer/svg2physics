@@ -23,8 +23,9 @@ svg2physics.js: Makefile
 	@chmod a-w $@
 
 svg2physics.zip: svg2physics.min.js
+	@rm svg2physics.zip
 	zip svg2physics.zip \
-	  svg2physics.min.js svg2physics.js LICENCE \
+	  svg2physics.min.js svg2physics.js LICENSE \
 	  libs/box2dweb/Box2D.min.js libs/box2dweb/Box2D.js
 
 clean:
