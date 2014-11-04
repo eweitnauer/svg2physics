@@ -27,11 +27,20 @@ Circle.prototype.bounding_box = function() {
   return {x:this.x-this.r, y:this.y-this.r, width:2*this.r, height:2*this.r};
 }
 
-// If the passed path SVG element was originally a circle and written as a path
-// by inkscape, it will construct a new Circle object from it and return it. If
-// the path does not resemble a circle, it will return null.
-// If exclude_ellipse is passed as true, the program will reject cases in which
-// rx differs from ry (default: true).
+/// Create a circle based on an svg circle node.
+Circle.fromSVGCircle = function(node) {
+  var attrs = node.attributes;
+  if (attrs.cx && attrs.cy && attrs.r) {
+    return new Circle(Number(attrs.cx.value), Number(attrs.cy.value)
+                     ,Number(attrs.r.value));
+  } else return null;
+}
+
+/// This method is used to parse circles in SVG created with older Inkscape
+/// versions. The circle will be written as path, but the center and radius
+/// is still available in sodipodi:cx, sodipodi:cy, sodipodi:rx and sodipodi:ry.
+/// If exclude_ellipse is passed as true, the program will reject cases in which
+/// rx differs from ry (default: true).
 Circle.fromSVGPath = function(path_node) {
   if (typeof(exclude_ellipse) == 'undefined') exclude_ellipse = true;
   var ns = path_node.lookupNamespaceURI('sodipodi');
@@ -516,24 +525,24 @@ Polygon.prototype.area = function() {
 }
 
 /// Returns the centroid (center of gravity).
-/** This method only works accurately, if the polygon has a non-zero area.
-  * If the area is zero, it returns simply the average of all vertices,
-  * which is only correct for polygons with one or two vertices. */
+/** This method only works accurately, if the polygon has a non-zero area and
+  * has no intersections. If the area is zero or the polygon is not closed,
+  * it simply returns the center of the bounding box. */
 Polygon.prototype.centroid = function() {
   var c = new Point(0,0);
   var N = this.pts.length;
-  if (N==0) return c;
+  if (N===0) return c;
   var A = this.area();
-  if (Math.abs(A) >= Point.EPS) { // area not zero, use accurate formular
+  if (this.closed && Math.abs(A) >= Point.EPS) { // area not zero, use accurate formular
     var prev = this.back();
     for (var i=0; i<N; ++i) {
       c = c.add(prev.add(this.pts[i]).scale(prev.cross(this.pts[i])));
       prev = this.pts[i];
     }
-    c = c.scale(1./(6.*A));
-  } else { // area is zero, just return average of all vertices
-    for (var i=0; i<N; ++i) c = c.add(this.pts[i]);
-    c = c.scale(1./N);
+    c = c.scale(1.0/(6.0*A));
+  } else { // area is zero, or polygon is not closed
+    var bb = this.bounding_box();
+    return new Point(bb.x+bb.width/2, bb.y+bb.height/2);
   }
   return c;
 }

@@ -4,9 +4,9 @@ var scale = 4
   , world
   , simulator;
 
-function init() {
+function init(file) {
   create_html_elements();
-  loadSVG('./scene.svg');
+  loadSVG(file);
 }
 
 function loadSVG(path) {
